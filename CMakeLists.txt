@@ -26,6 +26,12 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+ament_target_dependencies(${PROJECT_NAME}
+  dynamixel_sdk
+  rclcpp
+  tachimawari
+  tachimawari_interfaces)
+
 install(DIRECTORY "include" DESTINATION ".")
 
 install(TARGETS ${PROJECT_NAME}
@@ -34,11 +40,29 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION "lib"
   RUNTIME DESTINATION "bin")
 
-ament_target_dependencies(${PROJECT_NAME}
-  dynamixel_sdk
-  rclcpp
-  tachimawari
-  tachimawari_interfaces)
+add_executable(check_joints "src/check_joints_main.cpp")
+target_include_directories(check_joints PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_link_libraries(check_joints ${PROJECT_NAME})
+
+add_executable(move_joint "src/move_joint_main.cpp")
+target_include_directories(move_joint PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_link_libraries(move_joint ${PROJECT_NAME})
+
+add_executable(motion_manager "src/motion_manager_main.cpp")
+target_include_directories(motion_manager PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_link_libraries(motion_manager ${PROJECT_NAME})
+
+install(TARGETS
+  check_joints
+  move_joint
+  motion_manager
+  DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
