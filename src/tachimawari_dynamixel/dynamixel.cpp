@@ -36,7 +36,7 @@
 
 using namespace std::chrono_literals;
 
-namespace tachimawari
+namespace tachimawari_dynamixel
 {
 
 Dynamixel::Dynamixel(std::string node_name, std::string port, float protocol_version)
@@ -56,7 +56,7 @@ Dynamixel::Dynamixel(std::string node_name, std::string port, float protocol_ver
         std::vector<tachimawari_interfaces::msg::Joint>
         joints_message = request->joints;
 
-        for (int index = 0; index < static_cast<int>(joints_message.size()); index++) {
+        for (size_t index = 0; index < joints_message.size(); index++) {
           Joint joint(joints_message.at(index).name.c_str());
 
           joint.set_target_position(
@@ -108,7 +108,7 @@ void Dynamixel::stop()
   port_handler->closePort();
 }
 
-bool Dynamixel::torque_enable(std::vector<Joint> joints)
+bool Dynamixel::torque_enable(const std::vector<Joint> & joints)
 {
   if (torque_enabled) {
     return torque_enabled;
@@ -124,7 +124,7 @@ bool Dynamixel::torque_enable(std::vector<Joint> joints)
   return torque_enable_state;
 }
 
-bool Dynamixel::torque_enable(Joint joint)
+bool Dynamixel::torque_enable(const Joint & joint)
 {
   int comm_result = COMM_TX_FAIL;
   uint8_t comm_error = 0;
@@ -149,7 +149,7 @@ bool Dynamixel::torque_enable(Joint joint)
   return true;
 }
 
-bool Dynamixel::torque_disable(std::vector<Joint> joints)
+bool Dynamixel::torque_disable(const std::vector<Joint> & joints)
 {
   bool torque_disable_state = false;
 
@@ -160,7 +160,7 @@ bool Dynamixel::torque_disable(std::vector<Joint> joints)
   return torque_disable_state;
 }
 
-bool Dynamixel::torque_disable(Joint joint)
+bool Dynamixel::torque_disable(const Joint & joint)
 {
   int comm_result = COMM_TX_FAIL;
   uint8_t comm_error = 0;
@@ -186,7 +186,7 @@ bool Dynamixel::torque_disable(Joint joint)
 }
 
 bool Dynamixel::sync_write_joints(
-  std::vector<Joint> joints, MXAddress start_address,
+  const std::vector<Joint> & joints, MXAddress start_address,
   int data_length)
 {
   // Initialize GroupSyncWrite instance
@@ -259,7 +259,7 @@ bool Dynamixel::sync_read_joints(
   bool getdata_state = false;
   int32_t data_result = 0;
 
-  for (int index = 0; index < static_cast<int>(joints.size()); index++) {
+  for (size_t index = 0; index < joints.size(); index++) {
     // Check if groupsyncread data of Dynamixel is available
     getdata_state = group_sync_read.isAvailable(
       joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
@@ -313,7 +313,7 @@ bool Dynamixel::bulk_read_joints(
   bool getdata_state = false;
   int32_t data_result = 0;
 
-  for (int index = 0; index < static_cast<int>(joints.size()); index++) {
+  for (size_t index = 0; index < joints.size(); index++) {
     // Check if groupsyncread data of Dynamixel is available
     getdata_state = group_bulk_read.isAvailable(
       joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
@@ -335,7 +335,7 @@ bool Dynamixel::bulk_read_joints(
   return true;
 }
 
-bool Dynamixel::init_joints_present_position(std::vector<Joint> joints)
+bool Dynamixel::init_joints_present_position(std::vector<Joint> & joints)
 {
   bool init_state = true;
 
@@ -344,7 +344,7 @@ bool Dynamixel::init_joints_present_position(std::vector<Joint> joints)
     this->joints = joints;
     init_joints_state = true;
   } else {
-    for (int index = 0; index < static_cast<int>(joints.size()); index++) {
+    for (size_t index = 0; index < joints.size(); index++) {
       joints.at(index).set_present_position(this->joints.at(index).get_goal_position());
     }
     this->joints = joints;
@@ -358,7 +358,7 @@ bool Dynamixel::move_joint(Joint /*joint*/)
   return true;
 }
 
-bool Dynamixel::move_joints(std::vector<Joint> joints)
+bool Dynamixel::move_joints(std::vector<Joint> & joints)
 {
   bool move_joints_state = true;
   rclcpp::Rate rcl_rate(8ms);
@@ -368,7 +368,7 @@ bool Dynamixel::move_joints(std::vector<Joint> joints)
       while (true) {
         rcl_rate.sleep();
 
-        for (int index = 0; index < static_cast<int>(joints.size()); index++) {
+        for (size_t index = 0; index < joints.size(); index++) {
           joints.at(index).interpolate();
         }
 
@@ -384,4 +384,4 @@ bool Dynamixel::move_joints(std::vector<Joint> joints)
   return move_joints_state;
 }
 
-}  // namespace tachimawari
+}  // namespace tachimawari_dynamixel

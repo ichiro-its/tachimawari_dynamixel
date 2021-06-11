@@ -26,8 +26,6 @@
 #include <vector>
 #include <array>
 
-using Joint = tachimawari::Joint;
-
 int main(int argc, char * argv[])
 {
   std::string port_name = "/dev/ttyACM0";
@@ -58,7 +56,7 @@ int main(int argc, char * argv[])
   dynamixel::PortHandler * port_handler = dynamixel::PortHandler::getPortHandler(port_name.c_str());
   dynamixel::PacketHandler * packet_handler = dynamixel::PacketHandler::getPacketHandler(2.0F);
 
-  Joint joint(joint_name);
+  tachimawari::Joint joint(joint_name);
 
   // Open port
   std::cout << "open the port\n";

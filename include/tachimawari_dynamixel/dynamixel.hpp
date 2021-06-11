@@ -33,7 +33,7 @@
 #include <string>
 #include <vector>
 
-namespace tachimawari
+namespace tachimawari_dynamixel
 {
 
 enum MXAddress : uint8_t
@@ -98,6 +98,8 @@ enum MXAddress : uint8_t
 class Dynamixel : public rclcpp::Node
 {
 public:
+  using Joint = tachimawari::Joint;
+
   explicit Dynamixel(
     std::string node_name, std::string port = "tty/ACM0", float protocol_version = 0);
   ~Dynamixel();
@@ -106,14 +108,14 @@ public:
   void stop();
 
 private:
-  bool torque_enable(Joint joint);
-  bool torque_enable(std::vector<Joint> joints);
+  bool torque_enable(const Joint & joint);
+  bool torque_enable(const std::vector<Joint> & joints);
 
-  bool torque_disable(Joint joint);
-  bool torque_disable(std::vector<Joint> joints);
+  bool torque_disable(const Joint & joint);
+  bool torque_disable(const std::vector<Joint> & joints);
 
   bool sync_write_joints(
-    std::vector<Joint> joints, MXAddress start_address = MXAddress::GOAL_POSITION,
+    const std::vector<Joint> & joints, MXAddress start_address = MXAddress::GOAL_POSITION,
     int data_length = 4);
   bool sync_read_joints(
     std::vector<Joint> & joints, MXAddress start_address = MXAddress::PRESENT_POSITION,
@@ -123,9 +125,9 @@ private:
     int data_length = 4);
 
   bool move_joint(Joint joint);
-  bool move_joints(std::vector<Joint>);
+  bool move_joints(std::vector<Joint> & joints);
 
-  bool init_joints_present_position(std::vector<Joint> joints);
+  bool init_joints_present_position(std::vector<Joint> & joints);
 
   dynamixel::PortHandler * port_handler;
   dynamixel::PacketHandler * packet_handler;
@@ -139,6 +141,6 @@ private:
   bool torque_enabled = false;
 };
 
-}  // namespace tachimawari
+}  // namespace tachimawari_dynamixel
 
 #endif  // TACHIMAWARI_DYNAMIXEL__DYNAMIXEL_HPP_

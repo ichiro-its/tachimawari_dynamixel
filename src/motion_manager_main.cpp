@@ -20,7 +20,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <tachimawari/motion_manager.hpp>
+#include <tachimawari_dynamixel/dynamixel.hpp>
 
 #include <iostream>
 #include <memory>
@@ -38,15 +38,17 @@ int main(int argc, char * argv[])
   }
 
   // init node
-  auto motion_manager = std::make_shared<tachimawari::MotionManager>("motion_manager", port_name);
+  auto dynamixel_manager = std::make_shared<tachimawari_dynamixel::Dynamixel>(
+    "dynamixel_manager",
+    port_name);
 
   // open the port
-  if (motion_manager->start()) {
-    rclcpp::spin(motion_manager);
+  if (dynamixel_manager->start()) {
+    rclcpp::spin(dynamixel_manager);
   }
 
   // close the port
-  motion_manager->stop();
+  dynamixel_manager->stop();
 
   rclcpp::shutdown();
 }
