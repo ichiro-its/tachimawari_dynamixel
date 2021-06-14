@@ -52,7 +52,7 @@ Dynamixel::Dynamixel(std::string node_name, std::string port, float protocol_ver
       [this](std::shared_ptr<SetJoints::Request> request,
       std::shared_ptr<SetJoints::Response> response) {
         (void)request;
-        std::vector<Joint> joints;
+        auto joints = std::make_shared<std::vector<Joint>>();
         std::vector<tachimawari_interfaces::msg::Joint>
         joints_message = request->joints;
 
@@ -61,7 +61,7 @@ Dynamixel::Dynamixel(std::string node_name, std::string port, float protocol_ver
 
           joint.set_target_position(
             joints_message.at(index).position, joints_message.at(index).speed);
-          joints.push_back(joint);
+          joints->push_back(joint);
         }
 
         response->status = move_joints(joints);
@@ -229,7 +229,7 @@ bool Dynamixel::sync_write_joints(
 }
 
 bool Dynamixel::sync_read_joints(
-  std::vector<Joint> & joints, MXAddress start_address,
+  std::shared_ptr<std::vector<Joint>> joints, MXAddress start_address,
   int data_length)
 {
   // Initialize Groupsyncread instance
@@ -238,7 +238,7 @@ bool Dynamixel::sync_read_joints(
 
   // Add parameter storage for Dynamixel value
   bool addparam_state = false;
-  for (auto joint : joints) {
+  for (auto joint : *joints) {
     addparam_state = group_sync_read.addParam(joint.get_id());
     if (addparam_state != true) {
       RCLCPP_ERROR_STREAM(
@@ -259,19 +259,19 @@ bool Dynamixel::sync_read_joints(
   bool getdata_state = false;
   int32_t data_result = 0;
 
-  for (size_t index = 0; index < joints.size(); index++) {
+  for (size_t index = 0; index < joints->size(); index++) {
     // Check if groupsyncread data of Dynamixel is available
     getdata_state = group_sync_read.isAvailable(
-      joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
+      joints->at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
     if (getdata_state != true) {
       RCLCPP_ERROR_STREAM(
         get_logger(), "[ID:" << std::setfill('0') << std::setw(2) <<
-          static_cast<int>(joints.at(index).get_id()) << "]. syncread getdata failed");
+          static_cast<int>(joints->at(index).get_id()) << "]. syncread getdata failed");
     } else {
       // Get Dynamixel present position value
       data_result = group_sync_read.getData(
-        joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
-      joints.at(index).set_present_position(data_result);
+        joints->at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
+      joints->at(index).set_present_position(data_result);
     }
   }
 
@@ -282,7 +282,7 @@ bool Dynamixel::sync_read_joints(
 }
 
 bool Dynamixel::bulk_read_joints(
-  std::vector<Joint> & joints, MXAddress start_address,
+  std::shared_ptr<std::vector<Joint>> joints, MXAddress start_address,
   int data_length)
 {
   // Initialize GroupBulkRead instance
@@ -290,7 +290,7 @@ bool Dynamixel::bulk_read_joints(
 
   // Add parameter storage for Dynamixel data
   bool addparam_state = false;
-  for (auto joint : joints) {
+  for (auto joint : *joints) {
     addparam_state = group_bulk_read.addParam(
       joint.get_id(), static_cast<uint16_t>(start_address), data_length);
     if (addparam_state != true) {
@@ -313,19 +313,19 @@ bool Dynamixel::bulk_read_joints(
   bool getdata_state = false;
   int32_t data_result = 0;
 
-  for (size_t index = 0; index < joints.size(); index++) {
+  for (size_t index = 0; index < joints->size(); index++) {
     // Check if groupsyncread data of Dynamixel is available
     getdata_state = group_bulk_read.isAvailable(
-      joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
+      joints->at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
     if (getdata_state != true) {
       RCLCPP_ERROR_STREAM(
         get_logger(), "[ID:" << std::setfill('0') << std::setw(2) <<
-          static_cast<int>(joints.at(index).get_id()) << "]. bulkread getdata failed");
+          static_cast<int>(joints->at(index).get_id()) << "]. bulkread getdata failed");
     } else {
       // Get Dynamixel present position value
       data_result = group_bulk_read.getData(
-        joints.at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
-      joints.at(index).set_present_position(data_result);
+        joints->at(index).get_id(), static_cast<uint8_t>(start_address), data_length);
+      joints->at(index).set_present_position(data_result);
     }
   }
 
@@ -335,19 +335,19 @@ bool Dynamixel::bulk_read_joints(
   return true;
 }
 
-bool Dynamixel::init_joints_present_position(std::vector<Joint> & joints)
+bool Dynamixel::init_joints_present_position(std::shared_ptr<std::vector<Joint>> joints)
 {
   bool init_state = true;
 
   if (!init_joints_state) {
     init_state = sync_read_joints(joints);
-    this->joints = joints;
+    this->joints = *joints;
     init_joints_state = true;
   } else {
-    for (size_t index = 0; index < joints.size(); index++) {
-      joints.at(index).set_present_position(this->joints.at(index).get_goal_position());
+    for (size_t index = 0; index < joints->size(); index++) {
+      joints->at(index).set_present_position(this->joints.at(index).get_goal_position());
     }
-    this->joints = joints;
+    this->joints = *joints;
   }
 
   return init_state;
@@ -358,21 +358,21 @@ bool Dynamixel::move_joint(Joint /*joint*/)
   return true;
 }
 
-bool Dynamixel::move_joints(std::vector<Joint> & joints)
+bool Dynamixel::move_joints(std::shared_ptr<std::vector<Joint>> joints)
 {
   bool move_joints_state = true;
   rclcpp::Rate rcl_rate(8ms);
 
-  if (torque_enable(joints)) {
+  if (torque_enable(*joints)) {
     if (init_joints_present_position(joints)) {
       while (true) {
         rcl_rate.sleep();
 
-        for (size_t index = 0; index < joints.size(); index++) {
-          joints.at(index).interpolate();
+        for (size_t index = 0; index < joints->size(); index++) {
+          joints->at(index).interpolate();
         }
 
-        move_joints_state = sync_write_joints(joints);
+        move_joints_state = sync_write_joints(*joints);
 
         if (!move_joints_state) {
           break;

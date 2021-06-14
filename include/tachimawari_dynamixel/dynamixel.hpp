@@ -118,16 +118,18 @@ private:
     const std::vector<Joint> & joints, MXAddress start_address = MXAddress::GOAL_POSITION,
     int data_length = 4);
   bool sync_read_joints(
-    std::vector<Joint> & joints, MXAddress start_address = MXAddress::PRESENT_POSITION,
+    std::shared_ptr<std::vector<Joint>> joints,
+    MXAddress start_address = MXAddress::PRESENT_POSITION,
     int data_length = 4);
   bool bulk_read_joints(
-    std::vector<Joint> & joints, MXAddress start_address = MXAddress::PRESENT_POSITION,
+    std::shared_ptr<std::vector<Joint>> joints,
+    MXAddress start_address = MXAddress::PRESENT_POSITION,
     int data_length = 4);
 
   bool move_joint(Joint joint);
-  bool move_joints(std::vector<Joint> & joints);
+  bool move_joints(std::shared_ptr<std::vector<Joint>> joints);
 
-  bool init_joints_present_position(std::vector<Joint> & joints);
+  bool init_joints_present_position(std::shared_ptr<std::vector<Joint>> joints);
 
   dynamixel::PortHandler * port_handler;
   dynamixel::PacketHandler * packet_handler;
