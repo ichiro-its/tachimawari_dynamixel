@@ -20,6 +20,7 @@ find_package(tachimawari REQUIRED)
 find_package(tachimawari_interfaces REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
+  "src/${PROJECT_NAME}/cm740.cpp"
   "src/${PROJECT_NAME}/dynamixel.cpp")
 
 target_include_directories(${PROJECT_NAME} PUBLIC

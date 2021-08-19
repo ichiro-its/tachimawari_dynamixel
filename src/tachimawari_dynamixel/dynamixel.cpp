@@ -132,7 +132,7 @@ bool Dynamixel::torque_enable(const Joint & joint)
 
   // Enable Torque
   comm_result = packet_handler->write1ByteTxRx(
-    port_handler, joint.get_id(), static_cast<uint8_t>(MXAddress::TORQUE_ENABLE),
+    port_handler, joint.get_id(), static_cast<uint8_t>(MXP2Address::TORQUE_ENABLE),
     torque_enable, &comm_error);
   if (comm_result != COMM_SUCCESS) {
     RCLCPP_ERROR_STREAM(
@@ -168,7 +168,7 @@ bool Dynamixel::torque_disable(const Joint & joint)
 
   // Disable Torque
   comm_result = packet_handler->write1ByteTxRx(
-    port_handler, joint.get_id(), static_cast<uint8_t>(MXAddress::TORQUE_ENABLE),
+    port_handler, joint.get_id(), static_cast<uint8_t>(MXP2Address::TORQUE_ENABLE),
     torque_disable, &comm_error);
   if (comm_result != COMM_SUCCESS) {
     RCLCPP_ERROR_STREAM(
@@ -186,7 +186,7 @@ bool Dynamixel::torque_disable(const Joint & joint)
 }
 
 bool Dynamixel::sync_write_joints(
-  const std::vector<Joint> & joints, MXAddress start_address,
+  const std::vector<Joint> & joints, MXP2Address start_address,
   int data_length)
 {
   // Initialize GroupSyncWrite instance
@@ -229,7 +229,7 @@ bool Dynamixel::sync_write_joints(
 }
 
 bool Dynamixel::sync_read_joints(
-  std::shared_ptr<std::vector<Joint>> joints, MXAddress start_address,
+  std::shared_ptr<std::vector<Joint>> joints, MXP2Address start_address,
   int data_length)
 {
   // Initialize Groupsyncread instance
@@ -282,7 +282,7 @@ bool Dynamixel::sync_read_joints(
 }
 
 bool Dynamixel::bulk_read_joints(
-  std::shared_ptr<std::vector<Joint>> joints, MXAddress start_address,
+  std::shared_ptr<std::vector<Joint>> joints, MXP2Address start_address,
   int data_length)
 {
   // Initialize GroupBulkRead instance

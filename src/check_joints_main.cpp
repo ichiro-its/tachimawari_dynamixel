@@ -28,8 +28,8 @@
 
 int main(int argc, char * argv[])
 {
-  std::string port_name = "/dev/ttyACM0";
-  int baudrate = 57600;
+  std::string port_name = "/dev/ttyUSB0";
+  int baudrate = 1000000;
 
   int dxl_comm_result = COMM_TX_FAIL;
   uint8_t dxl_error = 0;
@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
 
   std::cout << "set the port name as " << port_name << "\n";
   dynamixel::PortHandler * port_handler = dynamixel::PortHandler::getPortHandler(port_name.c_str());
-  dynamixel::PacketHandler * packet_handler = dynamixel::PacketHandler::getPacketHandler(2.0F);
+  dynamixel::PacketHandler * packet_handler = dynamixel::PacketHandler::getPacketHandler(1.0F);
 
   std::cout << "open the port\n";
   if (port_handler->openPort()) {

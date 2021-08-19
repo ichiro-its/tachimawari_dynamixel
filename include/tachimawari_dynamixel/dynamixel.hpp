@@ -36,7 +36,7 @@
 namespace tachimawari_dynamixel
 {
 
-enum MXAddress : uint8_t
+enum MXP2Address : uint8_t
 {
   // EEPROM Area
   MODEL_NUMBER              = 0,
@@ -115,15 +115,15 @@ private:
   bool torque_disable(const std::vector<Joint> & joints);
 
   bool sync_write_joints(
-    const std::vector<Joint> & joints, MXAddress start_address = MXAddress::GOAL_POSITION,
+    const std::vector<Joint> & joints, MXP2Address start_address = MXP2Address::GOAL_POSITION,
     int data_length = 4);
   bool sync_read_joints(
     std::shared_ptr<std::vector<Joint>> joints,
-    MXAddress start_address = MXAddress::PRESENT_POSITION,
+    MXP2Address start_address = MXP2Address::PRESENT_POSITION,
     int data_length = 4);
   bool bulk_read_joints(
     std::shared_ptr<std::vector<Joint>> joints,
-    MXAddress start_address = MXAddress::PRESENT_POSITION,
+    MXP2Address start_address = MXP2Address::PRESENT_POSITION,
     int data_length = 4);
 
   bool move_joint(Joint joint);
