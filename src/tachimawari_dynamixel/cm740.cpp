@@ -20,11 +20,6 @@
 
 #include <tachimawari_dynamixel/cm740.hpp>
 
-#include "controller/fsr.h"
-#include "controller/cm730.h"
-#include "motion/joint_data.h"
-#include "motion/motion_status.h"
-
 #include "./errno.h"
 #include "./fcntl.h"
 #include "./stdio.h"
@@ -38,7 +33,35 @@
 namespace tachimawari_dynamixel
 {
 
-CM740::CM740(char * platform)
+CM740::BulkReadData::BulkReadData()
+: start_address(0),
+  length(0),
+  error(-1)
+{
+  for (int i = 0; i < MXP1Address::MAXNUM_ADDRESS; i++) {
+    table[i] = 0;
+  }
+}
+
+int CM740::BulkReadData::read_byte(int address)
+{
+  if (address >= start_address && address < (start_address + length)) {
+    return (int)table[address];
+  }
+
+  return 0;
+}
+
+int CM740::BulkReadData::read_word(int address)
+{
+  if (address >= start_address && address < (start_address + length)) {
+    return CM740::make_word(table[address], table[address + 1]);
+  }
+
+  return 0;
+}
+
+CM740::CM740(std::string port_name)
 {
   DEBUG_PRINT = false;
   m_Socket_fd = -1;
@@ -52,12 +75,12 @@ CM740::CM740(char * platform)
   sem_init(&m_MidSemID, 0, 1);
   sem_init(&m_HighSemID, 0, 1);
 
-  set_port_name(name);
+  set_port_name(port_name);
 
-  m_Platform = platform;
   DEBUG_PRINT = false;
+
   for (int i = 0; i < ID_BROADCAST; i++) {
-    m_bulk_readData[i] = bulk_readData();
+    m_bulk_readData[i] = BulkReadData();
   }
 }
 
@@ -70,12 +93,12 @@ CM740::~CM740()
 int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int priority)
 {
   if (priority > 1) {
-    m_Platform->low_priority_wait();
+    low_priority_wait();
   }
   if (priority > 0) {
-    m_Platform->mid_priority_wait();
+    mid_priority_wait();
   }
-  m_Platform->high_priority_wait();
+  high_priority_wait();
 
   int res = TX_FAIL;
   int length = txpacket[LENGTH] + 4;
@@ -131,8 +154,8 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
   }
 
   if (length < (MAXNUM_TXPARAM + 6)) {
-    m_Platform->clear_port();
-    if (m_Platform->write_port(txpacket, length) == length) {
+    clear_port();
+    if (write_port(txpacket, length) == length) {
       if (txpacket[ID] != ID_BROADCAST) {
         int to_length = 0;
 
@@ -142,7 +165,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
           to_length = 6;
         }
 
-        m_Platform->set_packet_timeout(length);
+        set_packet_timeout(length);
 
         int get_length = 0;
         if (DEBUG_PRINT == true) {
@@ -150,7 +173,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
         }
 
         while (1) {
-          length = m_Platform->read_port(&rxpacket[get_length], to_length - get_length);
+          length = read_port(&rxpacket[get_length], to_length - get_length);
           if (DEBUG_PRINT == true) {
             for (int n = 0; n < length; n++) {
               fprintf(stderr, "%.2X ", rxpacket[get_length + n]);
@@ -190,7 +213,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
               get_length -= i;
             }
           } else {
-            if (m_Platform->is_packet_timeout() == true) {
+            if (is_packet_timeout() == true) {
               if (get_length == 0) {
                 res = RX_TIMEOUT;
               } else {
@@ -215,7 +238,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
           m_bulk_readData[_id].start_address = _addr;
         }
 
-        m_Platform->set_packet_timeout(to_length * 1.5);
+        set_packet_timeout(to_length * 1.5);
 
         int get_length = 0;
         if (DEBUG_PRINT == true) {
@@ -223,7 +246,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
         }
 
         while (1) {
-          length = m_Platform->read_port(&rxpacket[get_length], to_length - get_length);
+          length = read_port(&rxpacket[get_length], to_length - get_length);
           if (DEBUG_PRINT == true) {
             for (int n = 0; n < length; n++) {
               fprintf(stderr, "%.2X ", rxpacket[get_length + n]);
@@ -235,7 +258,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
             res = SUCCESS;
             break;
           } else {
-            if (m_Platform->is_packet_timeout() == true) {
+            if (is_packet_timeout() == true) {
               if (get_length == 0) {
                 res = RX_TIMEOUT;
               } else {
@@ -321,7 +344,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
   }
 
   if (DEBUG_PRINT == true) {
-    fprintf(stderr, "Time:%.2fms  ", m_Platform->get_packet_time());
+    fprintf(stderr, "Time:%.2fms  ", get_packet_time());
     fprintf(stderr, "RETURN: ");
     switch (res) {
       case SUCCESS:
@@ -354,12 +377,12 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
     }
   }
 
-  m_Platform->high_priority_release();
+  high_priority_release();
   if (priority > 0) {
-    m_Platform->mid_priority_release();
+    mid_priority_release();
   }
   if (priority > 1) {
-    m_Platform->low_priority_release();
+    low_priority_release();
   }
 
   return res;
@@ -382,37 +405,37 @@ void CM740::make_bulk_read_packet()
   m_bulk_readTxPacket[INSTRUCTION] = INST_BULK_READ;
   m_bulk_readTxPacket[PARAMETER] = (unsigned char)0x0;
 
-  if (ping(CM740::ID_CM, 0) == SUCCESS) {
+  if (ping(ID_CM, 0) == SUCCESS) {
     m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 30;
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = CM740::ID_CM;
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = CM740::P_DXL_POWER;
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = ID_CM;
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = P_DXL_POWER;
     number++;
   }
 
   // for(int id = 1; id < JointData::NUMBER_OF_JOINTS; id++)
   // {
-  //    if(MotionStatus::m_CurrentJoints.GetEnable(id))
-  //    {
-  //            m_bulk_readTxPacket[PARAMETER+3*number+1] = 2;   // length
-  //            m_bulk_readTxPacket[PARAMETER+3*number+2] = id;  // id
-  //            m_bulk_readTxPacket[PARAMETER+3*number+3] = MX28::P_PRESENT_POSITION_L; // start address
-  //            number++;
-  //    }
+  //   if(MotionStatus::m_CurrentJoints.GetEnable(id))
+  //   {
+  //     m_bulk_readTxPacket[PARAMETER+3*number+1] = 2;   // length
+  //     m_bulk_readTxPacket[PARAMETER+3*number+2] = id;  // id
+  //     m_bulk_readTxPacket[PARAMETER+3*number+3] = MX28::P_PRESENT_POSITION_L; // start address
+  //     number++;
+  //   }
   // }
 
   if (ping(FSR::ID_L_FSR, 0) == SUCCESS) {
     printf("CONNECTED TO Left FSR");
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;            // length
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_L_FSR; // id
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSR::P_FSR1_L; // start address
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;  // length
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_L_FSR;  // id
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSRAddress::P_FSR1_L;  // start address
     number++;
   }
 
   if (ping(FSR::ID_R_FSR, 0) == SUCCESS) {
     printf("CONNECTED TO right FSR");
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;            // length
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_R_FSR; // id
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSR::P_FSR1_L; // start address
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;  // length
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_R_FSR;  // id
+    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSRAddress::P_FSR1_L;  // start address
     number++;
   }
 
@@ -458,7 +481,7 @@ int CM740::sync_write(int start_addr, int each_length, int number, int * pParam)
 bool CM740::connect()
 {
   // disconnect();
-  if (m_Platform->open_port() == false) {
+  if (open_port() == false) {
     return false;
   }
 
@@ -468,7 +491,7 @@ bool CM740::connect()
 bool CM740::change_baud(int baud)
 {
   printf("baud\n");
-  if (m_Platform->set_baud(baud) == false) {
+  if (set_baud(baud) == false) {
     fprintf(stderr, "\n Fail to change baudrate\n");
     return false;
   }
@@ -478,13 +501,13 @@ bool CM740::change_baud(int baud)
 
 bool CM740::dxl_power_on()
 {
-  if (write_byte(CM740::ID_CM, CM740::P_DXL_POWER, 1, 0) == CM740::SUCCESS) {
+  if (write_byte(ID_CM, P_DXL_POWER, 1, 0) == SUCCESS) {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Succeed to change Dynamixel power!\n");
     }
 
-    write_word(CM740::ID_CM, CM740::P_LED_HEAD_L, make_color(255, 128, 0), 0);
-    m_Platform->sleep(300); // about 300msec
+    write_word(ID_CM, P_LED_HEAD_L, make_color(255, 128, 0), 0);
+    sleep(300); // about 300msec
   } else {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Fail to change Dynamixel power!\n");
@@ -498,12 +521,12 @@ bool CM740::dxl_power_on()
 void CM740::disconnect()
 {
   // Make the Head LED to green
-  //write_word(CM740::ID_CM, CM740::P_LED_HEAD_L, make_color(0, 255, 0), 0);
+  // write_word(ID_CM, P_LED_HEAD_L, make_color(0, 255, 0), 0);
   fprintf(stderr, "\n Close Port\n");
   unsigned char txpacket[] = {0xFF, 0xFF, 0xC8, 0x05, 0x03, 0x1A, 0xE0, 0x03, 0x32};
-  m_Platform->write_port(txpacket, 9);
+  write_port(txpacket, 9);
 
-  m_Platform->close_port();
+  close_port();
 }
 
 int CM740::write_byte(int address, int value, int * error)
@@ -731,9 +754,10 @@ int CM740::get_blue_byte(int color)
   return (int)(blue & 0xFF);
 }
 
-void CM740::set_port_name(const char * name)
+// connection
+void CM740::set_port_name(const std::string & port_name)
 {
-  strcpy(m_PortName, name);
+  m_PortName = port_name;
 }
 
 bool CM740::open_port()
@@ -748,7 +772,7 @@ bool CM740::open_port()
     printf("\n%s open ", m_PortName);
   }
 
-  if ((m_Socket_fd = open(m_PortName, O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0) {
+  if ((m_Socket_fd = open(m_PortName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK)) < 0) {
     if (DEBUG_PRINT == true) {
       printf("failed! %d %d %d %d %d\n", errno, EBADF, EFAULT, EINVAL, ENOTTY);
     }

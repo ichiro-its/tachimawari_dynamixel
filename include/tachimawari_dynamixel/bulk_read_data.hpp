@@ -21,7 +21,7 @@
 #ifndef TACHIMAWARI_DYNAMIXEL__BULK_READ_DATA_HPP_
 #define TACHIMAWARI_DYNAMIXEL__BULK_READ_DATA_HPP_
 
-#include "controller/mx28.h"
+#include <tachimawari_dynamixel/cm740.hpp>
 
 namespace tachimawari_dynamixel
 {
@@ -32,7 +32,7 @@ public:
   int start_address;
   int length;
   int error;
-  unsigned char table[MX28::MAXNUM_ADDRESS];
+  unsigned char table[MXP1Address::MAXNUM_ADDRESS];
 
   BulkReadData();
 

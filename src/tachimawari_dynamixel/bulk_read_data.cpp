@@ -20,8 +20,6 @@
 
 #include <tachimawari_dynamixel/bulk_read_data.hpp>
 
-#include <tachimawari_dynamixel/cm740.hpp>
-
 namespace tachimawari_dynamixel
 {
 
