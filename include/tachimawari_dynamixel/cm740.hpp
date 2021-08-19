@@ -149,7 +149,7 @@ public:
   bool DEBUG_PRINT;
   bulk_readData m_bulk_readData[ID_BROADCAST];
 
-  CM740(PlatformCM730 *platform);
+  CM740(PlatformCM730 * platform);
   ~CM740();
 
   bool connect();
@@ -158,17 +158,17 @@ public:
   bool change_baud(int baud);
   bool dxl_power_on();
 
-  int ping(int id, int *error);
+  int ping(int id, int * error);
 
-  int read_byte(int id, int address, int *pValue, int *error);
-  int read_word(int id, int address, int *pValue, int *error);
-  int read_table(int id, int start_addr, int end_addr, unsigned char *table, int *error);
+  int read_byte(int id, int address, int * pValue, int * error);
+  int read_word(int id, int address, int * pValue, int * error);
+  int read_table(int id, int start_addr, int end_addr, unsigned char * table, int * error);
 
-  int write_byte(int address, int value, int *error);
-  int write_word(int address, int value, int *error);
-  int write_byte(int id, int address, int value, int *error);
-  int write_word(int id, int address, int value, int *error);
-  int sync_write(int start_addr, int each_length, int number, int *pParam);
+  int write_byte(int address, int value, int * error);
+  int write_word(int address, int value, int * error);
+  int write_byte(int id, int address, int value, int * error);
+  int write_word(int id, int address, int value, int * error);
+  int sync_write(int start_addr, int each_length, int number, int * pParam);
 
   int bulk_read();
 
@@ -181,17 +181,17 @@ public:
   static int get_read_byte(int color);
   static int get_green_byte(int color);
   static int get_blue_byte(int color);
-  
+
   // connection
-  void set_port_name(const char* name);
-  const char* get_port_name() { return (const char*)m_PortName; }
+  void set_port_name(const char * name);
+  const char * get_port_name() {return (const char *)m_PortName;}
 
   bool open_port();
   bool set_baud(int baud);
   void close_port();
   void clear_port();
-  int write_port(unsigned char* packet, int numPacket);
-  int read_port(unsigned char* packet, int numPacket);
+  int write_port(unsigned char * packet, int numPacket);
+  int read_port(unsigned char * packet, int numPacket);
 
   void low_priority_wait();
   void mid_priority_wait();
@@ -215,9 +215,9 @@ private:
 
   unsigned char m_bulk_readTxPacket[MAXNUM_TXPARAM + 10];
 
-  int txrx_packet(unsigned char *txpacket, unsigned char *rxpacket, int priority);
-  unsigned char calculate_checksum(unsigned char *packet);
-  
+  int txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int priority);
+  unsigned char calculate_checksum(unsigned char * packet);
+
   // connection
   int m_Socket_fd;
   double m_PacketStartTime;
