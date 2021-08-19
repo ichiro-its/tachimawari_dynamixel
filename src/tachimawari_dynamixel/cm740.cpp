@@ -20,6 +20,8 @@
 
 #include <tachimawari_dynamixel/cm740.hpp>
 
+#include <string>
+
 #include "./errno.h"
 #include "./fcntl.h"
 #include "./stdio.h"
@@ -38,7 +40,7 @@ CM740::BulkReadData::BulkReadData()
   length(0),
   error(-1)
 {
-  for (int i = 0; i < MXP1Address::MAXNUM_ADDRESS; i++) {
+  for (int i = 0; i < MXP1_MAXNUM_ADDRESS; i++) {
     table[i] = 0;
   }
 }
@@ -46,7 +48,7 @@ CM740::BulkReadData::BulkReadData()
 int CM740::BulkReadData::read_byte(int address)
 {
   if (address >= start_address && address < (start_address + length)) {
-    return (int)table[address];
+    return static_cast<int>(table[address]);
   }
 
   return 0;
@@ -101,7 +103,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
   high_priority_wait();
 
   int res = TX_FAIL;
-  int length = txpacket[LENGTH] + 4;
+  int length = txpacket[INDEX_LENGTH] + 4;
 
   txpacket[0] = 0xFF;
   txpacket[1] = 0xFF;
@@ -114,7 +116,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
     }
 
     fprintf(stderr, "INST: ");
-    switch (txpacket[INSTRUCTION]) {
+    switch (txpacket[INDEX_INSTRUCTION]) {
       case INST_PING:
         fprintf(stderr, "PING\n");
         break;
@@ -156,11 +158,11 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
   if (length < (MAXNUM_TXPARAM + 6)) {
     clear_port();
     if (write_port(txpacket, length) == length) {
-      if (txpacket[ID] != ID_BROADCAST) {
+      if (txpacket[INDEX_ID] != ID_BROADCAST) {
         int to_length = 0;
 
-        if (txpacket[INSTRUCTION] == INST_READ) {
-          to_length = txpacket[PARAMETER + 1] + 6;
+        if (txpacket[INDEX_INSTRUCTION] == INST_READ) {
+          to_length = txpacket[INDEX_PARAMETER + 1] + 6;
         } else {
           to_length = 6;
         }
@@ -224,14 +226,14 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
             }
           }
         }
-      } else if (txpacket[INSTRUCTION] == INST_BULK_READ) {
+      } else if (txpacket[INDEX_INSTRUCTION] == INST_BULK_READ) {
         int to_length = 0;
-        int num = (txpacket[LENGTH] - 3) / 3;
+        int num = (txpacket[INDEX_LENGTH] - 3) / 3;
 
         for (int x = 0; x < num; x++) {
-          int _id = txpacket[PARAMETER + (3 * x) + 2];
-          int _len = txpacket[PARAMETER + (3 * x) + 1];
-          int _addr = txpacket[PARAMETER + (3 * x) + 3];
+          int _id = txpacket[INDEX_PARAMETER + (3 * x) + 2];
+          int _len = txpacket[INDEX_PARAMETER + (3 * x) + 1];
+          int _addr = txpacket[INDEX_PARAMETER + (3 * x) + 3];
 
           to_length += _len + 6;
           m_bulk_readData[_id].length = _len;
@@ -271,7 +273,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
         }
 
         for (int x = 0; x < num; x++) {
-          int _id = txpacket[PARAMETER + (3 * x) + 2];
+          int _id = txpacket[INDEX_PARAMETER + (3 * x) + 2];
           m_bulk_readData[_id].error = -1;
         }
 
@@ -292,15 +294,16 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
               fprintf(stderr, "CHK:%.2X\n", checksum);
             }
 
-            if (rxpacket[LENGTH + rxpacket[LENGTH]] == checksum) {
-              for (int j = 0; j < (rxpacket[LENGTH] - 2); j++) {
-                m_bulk_readData[rxpacket[ID]].table[m_bulk_readData[rxpacket[ID]].start_address +
-                  j] = rxpacket[PARAMETER + j];
+            if (rxpacket[INDEX_LENGTH + rxpacket[INDEX_LENGTH]] == checksum) {
+              for (int j = 0; j < (rxpacket[INDEX_LENGTH] - 2); j++) {
+                m_bulk_readData[rxpacket[INDEX_ID]].table[m_bulk_readData[rxpacket[INDEX_ID]].
+                  start_address +
+                  j] = rxpacket[INDEX_PARAMETER + j];
               }
 
-              m_bulk_readData[rxpacket[ID]].error = (int)rxpacket[ERRBIT];
+              m_bulk_readData[rxpacket[INDEX_ID]].error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
 
-              int cur_packet_length = LENGTH + 1 + rxpacket[LENGTH];
+              int cur_packet_length = INDEX_LENGTH + 1 + rxpacket[INDEX_LENGTH];
               to_length = get_length - cur_packet_length;
               for (int j = 0; j <= to_length; j++) {
                 rxpacket[j] = rxpacket[j + cur_packet_length];
@@ -391,7 +394,7 @@ int CM740::txrx_packet(unsigned char * txpacket, unsigned char * rxpacket, int p
 unsigned char CM740::calculate_checksum(unsigned char * packet)
 {
   unsigned char checksum = 0x00;
-  for (int i = 2; i < packet[LENGTH] + 3; i++) {
+  for (int i = 2; i < packet[INDEX_LENGTH] + 3; i++) {
     checksum += packet[i];
   }
   return ~checksum;
@@ -401,14 +404,14 @@ void CM740::make_bulk_read_packet()
 {
   int number = 0;
 
-  m_bulk_readTxPacket[ID] = (unsigned char)ID_BROADCAST;
-  m_bulk_readTxPacket[INSTRUCTION] = INST_BULK_READ;
-  m_bulk_readTxPacket[PARAMETER] = (unsigned char)0x0;
+  m_bulk_readTxPacket[INDEX_ID] = (unsigned char)ID_BROADCAST;
+  m_bulk_readTxPacket[INDEX_INSTRUCTION] = INST_BULK_READ;
+  m_bulk_readTxPacket[INDEX_PARAMETER] = (unsigned char)0x0;
 
   if (ping(ID_CM, 0) == SUCCESS) {
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 30;
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = ID_CM;
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = P_DXL_POWER;
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 1] = 30;
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 2] = ID_CM;
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 3] = CM_DXL_POWER;
     number++;
   }
 
@@ -416,30 +419,30 @@ void CM740::make_bulk_read_packet()
   // {
   //   if(MotionStatus::m_CurrentJoints.GetEnable(id))
   //   {
-  //     m_bulk_readTxPacket[PARAMETER+3*number+1] = 2;   // length
-  //     m_bulk_readTxPacket[PARAMETER+3*number+2] = id;  // id
-  //     m_bulk_readTxPacket[PARAMETER+3*number+3] = MX28::P_PRESENT_POSITION_L; // start address
+  //     m_bulk_readTxPacket[INDEX_PARAMETER+3*number+1] = 2;  // length
+  //     m_bulk_readTxPacket[INDEX_PARAMETER+3*number+2] = id;  // id
+  //     m_bulk_readTxPacket[INDEX_PARAMETER+3*number+3] = MX28::P_PRESENT_POSITION_L;
   //     number++;
   //   }
   // }
 
   if (ping(FSR::ID_L_FSR, 0) == SUCCESS) {
     printf("CONNECTED TO Left FSR");
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;  // length
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_L_FSR;  // id
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSRAddress::P_FSR1_L;  // start address
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 1] = 10;  // length
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 2] = FSR::ID_L_FSR;  // id
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 3] = FSRAddress::FSR_FSR1_L;
     number++;
   }
 
   if (ping(FSR::ID_R_FSR, 0) == SUCCESS) {
     printf("CONNECTED TO right FSR");
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 1] = 10;  // length
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 2] = FSR::ID_R_FSR;  // id
-    m_bulk_readTxPacket[PARAMETER + 3 * number + 3] = FSRAddress::P_FSR1_L;  // start address
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 1] = 10;  // length
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 2] = FSR::ID_R_FSR;  // id
+    m_bulk_readTxPacket[INDEX_PARAMETER + 3 * number + 3] = FSRAddress::FSR_FSR1_L;
     number++;
   }
 
-  m_bulk_readTxPacket[LENGTH] = (number * 3) + 3;
+  m_bulk_readTxPacket[INDEX_LENGTH] = (number * 3) + 3;
 }
 
 int CM740::bulk_read()
@@ -448,7 +451,7 @@ int CM740::bulk_read()
     0,
   };
 
-  if (m_bulk_readTxPacket[LENGTH] != 0) {
+  if (m_bulk_readTxPacket[INDEX_LENGTH] != 0) {
     return txrx_packet(m_bulk_readTxPacket, rxpacket, 0);
   } else {
     make_bulk_read_packet();
@@ -466,14 +469,14 @@ int CM740::sync_write(int start_addr, int each_length, int number, int * pParam)
   };
   int n;
 
-  txpacket[ID] = (unsigned char)ID_BROADCAST;
-  txpacket[INSTRUCTION] = INST_SYNC_WRITE;
-  txpacket[PARAMETER] = (unsigned char)start_addr;
-  txpacket[PARAMETER + 1] = (unsigned char)(each_length - 1);
+  txpacket[INDEX_ID] = (unsigned char)ID_BROADCAST;
+  txpacket[INDEX_INSTRUCTION] = INST_SYNC_WRITE;
+  txpacket[INDEX_PARAMETER] = (unsigned char)start_addr;
+  txpacket[INDEX_PARAMETER + 1] = (unsigned char)(each_length - 1);
   for (n = 0; n < (number * each_length); n++) {
-    txpacket[PARAMETER + 2 + n] = (unsigned char)pParam[n];
+    txpacket[INDEX_PARAMETER + 2 + n] = (unsigned char)pParam[n];
   }
-  txpacket[LENGTH] = n + 4;
+  txpacket[INDEX_LENGTH] = n + 4;
 
   return txrx_packet(txpacket, rxpacket, 0);
 }
@@ -501,13 +504,13 @@ bool CM740::change_baud(int baud)
 
 bool CM740::dxl_power_on()
 {
-  if (write_byte(ID_CM, P_DXL_POWER, 1, 0) == SUCCESS) {
+  if (write_byte(ID_CM, CM_DXL_POWER, 1, 0) == SUCCESS) {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Succeed to change Dynamixel power!\n");
     }
 
-    write_word(ID_CM, P_LED_HEAD_L, make_color(255, 128, 0), 0);
-    sleep(300); // about 300msec
+    write_word(ID_CM, CM_LED_HEAD_L, make_color(255, 128, 0), 0);
+    sleep(300);  // about 300msec
   } else {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Fail to change Dynamixel power!\n");
@@ -521,7 +524,7 @@ bool CM740::dxl_power_on()
 void CM740::disconnect()
 {
   // Make the Head LED to green
-  // write_word(ID_CM, P_LED_HEAD_L, make_color(0, 255, 0), 0);
+  // write_word(ID_CM, CM_LED_HEAD_L, make_color(0, 255, 0), 0);
   fprintf(stderr, "\n Close Port\n");
   unsigned char txpacket[] = {0xFF, 0xFF, 0xC8, 0x05, 0x03, 0x1A, 0xE0, 0x03, 0x32};
   write_port(txpacket, 9);
@@ -549,14 +552,14 @@ int CM740::ping(int id, int * error)
   };
   int result;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_PING;
-  txpacket[LENGTH] = 2;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_PING;
+  txpacket[INDEX_LENGTH] = 2;
 
   result = txrx_packet(txpacket, rxpacket, 2);
-  if (result == SUCCESS && txpacket[ID] != ID_BROADCAST) {
+  if (result == SUCCESS && txpacket[INDEX_ID] != ID_BROADCAST) {
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -573,17 +576,17 @@ int CM740::read_byte(int id, int address, int * pValue, int * error)
   };
   int result;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_READ;
-  txpacket[PARAMETER] = (unsigned char)address;
-  txpacket[PARAMETER + 1] = 1;
-  txpacket[LENGTH] = 4;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_READ;
+  txpacket[INDEX_PARAMETER] = (unsigned char)address;
+  txpacket[INDEX_PARAMETER + 1] = 1;
+  txpacket[INDEX_LENGTH] = 4;
 
   result = txrx_packet(txpacket, rxpacket, 2);
   if (result == SUCCESS) {
-    *pValue = (int)rxpacket[PARAMETER];
+    *pValue = static_cast<int>(rxpacket[INDEX_PARAMETER]);
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -600,18 +603,21 @@ int CM740::read_word(int id, int address, int * pValue, int * error)
   };
   int result;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_READ;
-  txpacket[PARAMETER] = (unsigned char)address;
-  txpacket[PARAMETER + 1] = 2;
-  txpacket[LENGTH] = 4;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_READ;
+  txpacket[INDEX_PARAMETER] = (unsigned char)address;
+  txpacket[INDEX_PARAMETER + 1] = 2;
+  txpacket[INDEX_LENGTH] = 4;
 
   result = txrx_packet(txpacket, rxpacket, 2);
   if (result == SUCCESS) {
-    *pValue = make_word((int)rxpacket[PARAMETER], (int)rxpacket[PARAMETER + 1]);
+    *pValue =
+      make_word(
+      static_cast<int>(rxpacket[INDEX_PARAMETER]),
+      static_cast<int>(rxpacket[INDEX_PARAMETER + 1]));
 
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -629,20 +635,20 @@ int CM740::read_table(int id, int start_addr, int end_addr, unsigned char * tabl
   int result;
   int length = end_addr - start_addr + 1;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_READ;
-  txpacket[PARAMETER] = (unsigned char)start_addr;
-  txpacket[PARAMETER + 1] = (unsigned char)length;
-  txpacket[LENGTH] = 4;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_READ;
+  txpacket[INDEX_PARAMETER] = (unsigned char)start_addr;
+  txpacket[INDEX_PARAMETER + 1] = (unsigned char)length;
+  txpacket[INDEX_LENGTH] = 4;
 
   result = txrx_packet(txpacket, rxpacket, 1);
   if (result == SUCCESS) {
     for (int i = 0; i < length; i++) {
-      table[start_addr + i] = rxpacket[PARAMETER + i];
+      table[start_addr + i] = rxpacket[INDEX_PARAMETER + i];
     }
 
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -659,16 +665,16 @@ int CM740::write_byte(int id, int address, int value, int * error)
   };
   int result;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_WRITE;
-  txpacket[PARAMETER] = (unsigned char)address;
-  txpacket[PARAMETER + 1] = (unsigned char)value;
-  txpacket[LENGTH] = 4;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_WRITE;
+  txpacket[INDEX_PARAMETER] = (unsigned char)address;
+  txpacket[INDEX_PARAMETER + 1] = (unsigned char)value;
+  txpacket[INDEX_LENGTH] = 4;
 
   result = txrx_packet(txpacket, rxpacket, 2);
   if (result == SUCCESS && id != ID_BROADCAST) {
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -685,17 +691,17 @@ int CM740::write_word(int id, int address, int value, int * error)
   };
   int result;
 
-  txpacket[ID] = (unsigned char)id;
-  txpacket[INSTRUCTION] = INST_WRITE;
-  txpacket[PARAMETER] = (unsigned char)address;
-  txpacket[PARAMETER + 1] = (unsigned char)get_low_byte(value);
-  txpacket[PARAMETER + 2] = (unsigned char)get_high_byte(value);
-  txpacket[LENGTH] = 5;
+  txpacket[INDEX_ID] = (unsigned char)id;
+  txpacket[INDEX_INSTRUCTION] = INST_WRITE;
+  txpacket[INDEX_PARAMETER] = (unsigned char)address;
+  txpacket[INDEX_PARAMETER + 1] = (unsigned char)get_low_byte(value);
+  txpacket[INDEX_PARAMETER + 2] = (unsigned char)get_high_byte(value);
+  txpacket[INDEX_LENGTH] = 5;
 
   result = txrx_packet(txpacket, rxpacket, 2);
   if (result == SUCCESS && id != ID_BROADCAST) {
     if (error != 0) {
-      *error = (int)rxpacket[ERRBIT];
+      *error = static_cast<int>(rxpacket[INDEX_ERRBIT]);
     }
   }
 
@@ -704,27 +710,27 @@ int CM740::write_word(int id, int address, int value, int * error)
 
 int CM740::make_word(int lowbyte, int highbyte)
 {
-  unsigned short word;
+  uint16_t word;
 
   word = highbyte;
   word = word << 8;
   word = word + lowbyte;
 
-  return (int)word;
+  return static_cast<int>(word);
 }
 
 int CM740::get_low_byte(int word)
 {
-  unsigned short temp;
+  uint16_t temp;
   temp = word & 0x00FF;
-  return (int)temp;
+  return static_cast<int>(temp);
 }
 
 int CM740::get_high_byte(int word)
 {
-  unsigned short temp;
+  uint16_t temp;
   temp = word & 0xFF00;
-  return (int)(temp >> 8);
+  return static_cast<int>((temp >> 8));
 }
 
 int CM740::make_color(int red, int green, int blue)
@@ -733,25 +739,25 @@ int CM740::make_color(int red, int green, int blue)
   int g = (green & 0xFF) >> 3;
   int b = (blue & 0xFF) >> 3;
 
-  return (int)((b << 10) | (g << 5) | r);
+  return static_cast<int>(((b << 10) | (g << 5) | r));
 }
 
 int CM740::get_read_byte(int color)
 {
-  unsigned short red = color << 3;
-  return (int)(red & 0xFF);
+  uint16_t red = color << 3;
+  return static_cast<int>((red & 0xFF));
 }
 
 int CM740::get_green_byte(int color)
 {
-  unsigned short green = (color >> 5) << 3;
-  return (int)(green & 0xFF);
+  uint16_t green = (color >> 5) << 3;
+  return static_cast<int>((green & 0xFF));
 }
 
 int CM740::get_blue_byte(int color)
 {
-  unsigned short blue = (color >> 10) << 3;
-  return (int)(blue & 0xFF);
+  uint16_t blue = (color >> 10) << 3;
+  return static_cast<int>((blue & 0xFF));
 }
 
 // connection
@@ -764,7 +770,7 @@ bool CM740::open_port()
 {
   struct termios newtio;
   struct serial_struct serinfo;
-  double baudrate = 1000000.0;       //bps (1Mbps)
+  double baudrate = 1000000.0;  // bps (1Mbps)
 
   close_port();
 
@@ -834,7 +840,7 @@ bool CM740::open_port()
 bool CM740::set_baud(int baud)
 {
   struct serial_struct serinfo;
-  int baudrate = (int)(2000000.0f / (float)(baud + 1));
+  int baudrate = static_cast<int>((2000000.0f / static_cast<float>(baud + 1)));
 
   if (m_Socket_fd == -1) {
     return false;
@@ -858,7 +864,7 @@ bool CM740::set_baud(int baud)
   close_port();
   open_port();
 
-  m_ByteTransferTime = (float)((1000.0f / baudrate) * 12.0f * 8);
+  m_ByteTransferTime = static_cast<float>((1000.0f / baudrate) * 12.0f * 8);
 
   return true;
 }
@@ -929,13 +935,13 @@ double CM740::get_current_time()
   struct timeval tv;
   gettimeofday(&tv, NULL);
 
-  return (double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0;
+  return static_cast<double>(tv.tv_sec) * 1000.0 + static_cast<double>(tv.tv_usec) / 1000.0;
 }
 
 void CM740::set_packet_timeout(int lenPacket)
 {
   m_PacketStartTime = get_current_time();
-  m_PacketWaitTime = m_ByteTransferTime * (double)lenPacket + 40.0;
+  m_PacketWaitTime = m_ByteTransferTime * static_cast<double>(lenPacket) + 40.0;
 }
 
 bool CM740::is_packet_timeout()
