@@ -41,7 +41,7 @@ install(TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION "lib"
   RUNTIME DESTINATION "bin")
 
-add_executable(check_joints "src/check_joints_main.cpp")
+add_executable(check_joints "src/check_joints_p1_main.cpp")
 target_include_directories(check_joints PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

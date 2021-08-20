@@ -493,11 +493,32 @@ bool CM740::connect()
 
 bool CM740::change_baud(int baud)
 {
-  printf("baud\n");
-  if (set_baud(baud) == false) {
-    fprintf(stderr, "\n Fail to change baudrate\n");
+  struct serial_struct serinfo;
+  int baudrate = static_cast<int>((2000000.0f / static_cast<float>(baud + 1)));
+
+  if (m_Socket_fd == -1) {
     return false;
   }
+
+  if (ioctl(m_Socket_fd, TIOCGSERIAL, &serinfo) < 0) {
+    fprintf(stderr, "Cannot get serial info\nFail to change baudrate\n");
+    return false;
+  }
+
+  serinfo.flags &= ~ASYNC_SPD_MASK;
+  serinfo.flags |= ASYNC_SPD_CUST;
+  serinfo.flags |= ASYNC_LOW_LATENCY;
+  serinfo.custom_divisor = serinfo.baud_base / baudrate;
+
+  if (ioctl(m_Socket_fd, TIOCSSERIAL, &serinfo) < 0) {
+    fprintf(stderr, "Cannot set serial info\nFail to change baudrate\n");
+    return false;
+  }
+
+  close_port();
+  open_port();
+
+  m_ByteTransferTime = static_cast<float>((1000.0f / baudrate) * 12.0f * 8);
 
   return dxl_power_on();
 }
@@ -833,38 +854,6 @@ bool CM740::open_port()
   tcflush(m_Socket_fd, TCIFLUSH);
 
   m_ByteTransferTime = (1000.0 / baudrate) * 12.0;
-
-  return true;
-}
-
-bool CM740::set_baud(int baud)
-{
-  struct serial_struct serinfo;
-  int baudrate = static_cast<int>((2000000.0f / static_cast<float>(baud + 1)));
-
-  if (m_Socket_fd == -1) {
-    return false;
-  }
-
-  if (ioctl(m_Socket_fd, TIOCGSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot get serial info\n");
-    return false;
-  }
-
-  serinfo.flags &= ~ASYNC_SPD_MASK;
-  serinfo.flags |= ASYNC_SPD_CUST;
-  serinfo.flags |= ASYNC_LOW_LATENCY;
-  serinfo.custom_divisor = serinfo.baud_base / baudrate;
-
-  if (ioctl(m_Socket_fd, TIOCSSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot set serial info\n");
-    return false;
-  }
-
-  close_port();
-  open_port();
-
-  m_ByteTransferTime = static_cast<float>((1000.0f / baudrate) * 12.0f * 8);
 
   return true;
 }
