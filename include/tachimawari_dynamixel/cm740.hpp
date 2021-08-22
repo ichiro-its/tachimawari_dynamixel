@@ -270,10 +270,8 @@ public:
   ~CM740();
 
   bool connect();
-  void disconnect();
-
-  bool change_baud(int baud);
   bool dxl_power_on();
+  void disconnect();
 
   int ping(int id, int * error);
 
@@ -303,8 +301,9 @@ public:
   void set_port_name(const std::string & port_name);
   const std::string & get_port_name() const {return m_PortName;}
 
+  void set_baudrate(int baudrate);
+
   bool open_port();
-  bool set_baud(int baud);
   void close_port();
   void clear_port();
   int write_port(unsigned char * packet, int numPacket);
@@ -345,7 +344,9 @@ private:
   double m_UpdateStartTime;
   double m_UpdateWaitTime;
   double m_ByteTransferTime;
+
   std::string m_PortName;
+  int baudrate;
 
   sem_t m_LowSemID;
   sem_t m_MidSemID;

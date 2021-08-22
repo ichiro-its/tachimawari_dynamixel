@@ -78,6 +78,7 @@ CM740::CM740(std::string port_name)
   sem_init(&m_HighSemID, 0, 1);
 
   set_port_name(port_name);
+  baudrate = 1000000;
 
   DEBUG_PRINT = false;
 
@@ -491,38 +492,6 @@ bool CM740::connect()
   return dxl_power_on();
 }
 
-bool CM740::change_baud(int baud)
-{
-  struct serial_struct serinfo;
-  int baudrate = static_cast<int>((2000000.0f / static_cast<float>(baud + 1)));
-
-  if (m_Socket_fd == -1) {
-    return false;
-  }
-
-  if (ioctl(m_Socket_fd, TIOCGSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot get serial info\nFail to change baudrate\n");
-    return false;
-  }
-
-  serinfo.flags &= ~ASYNC_SPD_MASK;
-  serinfo.flags |= ASYNC_SPD_CUST;
-  serinfo.flags |= ASYNC_LOW_LATENCY;
-  serinfo.custom_divisor = serinfo.baud_base / baudrate;
-
-  if (ioctl(m_Socket_fd, TIOCSSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot set serial info\nFail to change baudrate\n");
-    return false;
-  }
-
-  close_port();
-  open_port();
-
-  m_ByteTransferTime = static_cast<float>((1000.0f / baudrate) * 12.0f * 8);
-
-  return dxl_power_on();
-}
-
 bool CM740::dxl_power_on()
 {
   if (write_byte(ID_CM, CM_DXL_POWER, 1, 0) == SUCCESS) {
@@ -787,11 +756,15 @@ void CM740::set_port_name(const std::string & port_name)
   m_PortName = port_name;
 }
 
+void CM740::set_baudrate(int baudrate)
+{
+  this->baudrate = baudrate;
+}
+
 bool CM740::open_port()
 {
   struct termios newtio;
   struct serial_struct serinfo;
-  double baudrate = 1000000.0;  // bps (1Mbps)
 
   close_port();
 

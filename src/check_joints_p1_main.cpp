@@ -45,6 +45,9 @@ int main(int argc, char * argv[])
   std::cout << "set the port name as " << port_name << "\n";
   tachimawari_dynamixel::CM740 cm(port_name);
 
+  std::cout << "set the baudrate to " << baudrate << "\n";
+  cm.set_baudrate(baudrate);
+
   std::cout << "open the port\n";
   if (cm.connect()) {
     std::cout << "succeeded to open the port!\n";
@@ -52,13 +55,6 @@ int main(int argc, char * argv[])
     std::cout << "failed to open the port!\n" <<
       "try again!\n";
     return 0;
-  }
-
-  if (cm.change_baud(baudrate)) {
-    std::cout << "succeeded to set the baudrate!\n";
-  } else {
-    std::cout << "failed to set the baudrate!\n" <<
-      "try again!\n";
   }
 
   std::cout << "\033c";
