@@ -21,6 +21,8 @@
 #include <tachimawari_dynamixel/cm740.hpp>
 
 #include <string>
+#include <chrono>
+#include <thread>
 
 #include "./errno.h"
 #include "./fcntl.h"
@@ -69,8 +71,6 @@ CM740::CM740(std::string port_name)
   m_Socket_fd = -1;
   m_PacketStartTime = 0;
   m_PacketWaitTime = 0;
-  m_UpdateStartTime = 0;
-  m_UpdateWaitTime = 0;
   m_ByteTransferTime = 0;
 
   sem_init(&m_LowSemID, 0, 1);
@@ -500,7 +500,7 @@ bool CM740::dxl_power_on()
     }
 
     write_word(ID_CM, CM_LED_HEAD_L, make_color(255, 128, 0), 0);
-    sleep(300);  // about 300msec
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));  // about 300msec
   } else {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Fail to change Dynamixel power!\n");
@@ -925,44 +925,6 @@ double CM740::get_packet_time()
   }
 
   return time;
-}
-
-void CM740::set_update_timeout(int msec)
-{
-  m_UpdateStartTime = get_current_time();
-  m_UpdateWaitTime = msec;
-}
-
-bool CM740::is_update_timeout()
-{
-  if (get_update_time() > m_UpdateWaitTime) {
-    return true;
-  }
-
-  return false;
-}
-
-double CM740::get_update_time()
-{
-  double time;
-
-  time = get_current_time() - m_UpdateStartTime;
-  if (time < 0.0) {
-    m_UpdateStartTime = get_current_time();
-  }
-
-  return time;
-}
-
-void CM740::sleep(double msec)
-{
-  double start_time = get_current_time();
-  double curr_time = start_time;
-
-  do {
-    usleep((start_time + msec) - curr_time);
-    curr_time = get_current_time();
-  } while (curr_time - start_time < msec);
 }
 
 }  // namespace tachimawari_dynamixel

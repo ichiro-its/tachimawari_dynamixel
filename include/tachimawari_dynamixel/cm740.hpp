@@ -319,11 +319,6 @@ public:
   void set_packet_timeout(int lenPacket);
   bool is_packet_timeout();
   double get_packet_time();
-  void set_update_timeout(int msec);
-  bool is_update_timeout();
-  double get_update_time();
-
-  void sleep(double msec);
 
   bool DEBUG_PRINT;
   BulkReadData m_bulk_readData[ID_BROADCAST];
@@ -341,8 +336,6 @@ private:
   int m_Socket_fd;
   double m_PacketStartTime;
   double m_PacketWaitTime;
-  double m_UpdateStartTime;
-  double m_UpdateWaitTime;
   double m_ByteTransferTime;
 
   std::string m_PortName;
