@@ -18,37 +18,58 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <tachimawari_dynamixel/dynamixel.hpp>
+#include <tachimawari_dynamixel/cm740.hpp>
 
 #include <iostream>
-#include <memory>
+#include <iomanip>
+#include <vector>
+#include <numeric>
 #include <string>
 
 int main(int argc, char * argv[])
 {
-  rclcpp::init(argc, argv);
+  std::string port_name = "/dev/ttyUSB0";
+  int baudrate = 1000000;
 
-  std::string port_name = "tty/ACM0";
+  std::vector<uint8_t> ids(20);
+  std::iota(ids.begin(), ids.end(), 1);
 
-  // change the port name
   if (argc > 1) {
     port_name = argv[1];
+
+    if (argc > 2) {
+      baudrate = std::stoi(argv[2]);
+    }
   }
 
-  // init node
-  auto dynamixel_manager = std::make_shared<tachimawari_dynamixel::Dynamixel>(
-    "dynamixel_manager",
-    port_name);
+  std::cout << "set the port name as " << port_name << "\n";
+  tachimawari_dynamixel::CM740 cm(port_name);
 
-  // open the port
-  if (dynamixel_manager->start()) {
-    rclcpp::spin(dynamixel_manager);
+  std::cout << "set the baudrate to " << baudrate << "\n";
+  cm.set_baudrate(baudrate);
+
+  std::cout << "open the port\n";
+  if (cm.connect()) {
+    std::cout << "succeeded to open the port!\n";
+  } else {
+    std::cout << "failed to open the port!\n" <<
+      "try again!\n";
+    return 0;
   }
 
-  // close the port
-  dynamixel_manager->stop();
+  std::cout << "\033c";
 
-  rclcpp::shutdown();
+  std::cout << "ping the joints\n\n";
+  for (auto id : ids) {
+    if (cm.ping(id, 0) != tachimawari_dynamixel::SUCCESS) {
+      std::cout << "[ID: " << std::setfill('0') << std::setw(2) << int(id) << "] ping failed.\n";
+    } else {
+      std::cout << "[ID: " << std::setfill('0') << std::setw(2) << int(id) << "] ping succeeded.\n";
+    }
+  }
+
+  std::cout << "\nping done\n" <<
+    "close the port\n";
+
+  return 0;
 }

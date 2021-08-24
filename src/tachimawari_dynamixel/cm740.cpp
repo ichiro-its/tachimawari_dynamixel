@@ -18,9 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <tachimawari_dynamixel/cm740.hpp>
-
 #include <string>
+#include <chrono>
+#include <thread>
+
+#include "tachimawari_dynamixel/cm740.hpp"
 
 #include "./errno.h"
 #include "./fcntl.h"
@@ -31,6 +33,8 @@
 #include "linux/serial.h"
 #include "sys/ioctl.h"
 #include "sys/time.h"
+
+using namespace std::chrono_literals;  // NOLINT
 
 namespace tachimawari_dynamixel
 {
@@ -69,8 +73,6 @@ CM740::CM740(std::string port_name)
   m_Socket_fd = -1;
   m_PacketStartTime = 0;
   m_PacketWaitTime = 0;
-  m_UpdateStartTime = 0;
-  m_UpdateWaitTime = 0;
   m_ByteTransferTime = 0;
 
   sem_init(&m_LowSemID, 0, 1);
@@ -78,6 +80,7 @@ CM740::CM740(std::string port_name)
   sem_init(&m_HighSemID, 0, 1);
 
   set_port_name(port_name);
+  baudrate = 1000000;
 
   DEBUG_PRINT = false;
 
@@ -491,17 +494,6 @@ bool CM740::connect()
   return dxl_power_on();
 }
 
-bool CM740::change_baud(int baud)
-{
-  printf("baud\n");
-  if (set_baud(baud) == false) {
-    fprintf(stderr, "\n Fail to change baudrate\n");
-    return false;
-  }
-
-  return dxl_power_on();
-}
-
 bool CM740::dxl_power_on()
 {
   if (write_byte(ID_CM, CM_DXL_POWER, 1, 0) == SUCCESS) {
@@ -510,7 +502,7 @@ bool CM740::dxl_power_on()
     }
 
     write_word(ID_CM, CM_LED_HEAD_L, make_color(255, 128, 0), 0);
-    sleep(300);  // about 300msec
+    std::this_thread::sleep_for(300ms);  // about 300msec
   } else {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Fail to change Dynamixel power!\n");
@@ -766,11 +758,15 @@ void CM740::set_port_name(const std::string & port_name)
   m_PortName = port_name;
 }
 
+void CM740::set_baudrate(int baudrate)
+{
+  this->baudrate = baudrate;
+}
+
 bool CM740::open_port()
 {
   struct termios newtio;
   struct serial_struct serinfo;
-  double baudrate = 1000000.0;  // bps (1Mbps)
 
   close_port();
 
@@ -833,38 +829,6 @@ bool CM740::open_port()
   tcflush(m_Socket_fd, TCIFLUSH);
 
   m_ByteTransferTime = (1000.0 / baudrate) * 12.0;
-
-  return true;
-}
-
-bool CM740::set_baud(int baud)
-{
-  struct serial_struct serinfo;
-  int baudrate = static_cast<int>((2000000.0f / static_cast<float>(baud + 1)));
-
-  if (m_Socket_fd == -1) {
-    return false;
-  }
-
-  if (ioctl(m_Socket_fd, TIOCGSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot get serial info\n");
-    return false;
-  }
-
-  serinfo.flags &= ~ASYNC_SPD_MASK;
-  serinfo.flags |= ASYNC_SPD_CUST;
-  serinfo.flags |= ASYNC_LOW_LATENCY;
-  serinfo.custom_divisor = serinfo.baud_base / baudrate;
-
-  if (ioctl(m_Socket_fd, TIOCSSERIAL, &serinfo) < 0) {
-    fprintf(stderr, "Cannot set serial info\n");
-    return false;
-  }
-
-  close_port();
-  open_port();
-
-  m_ByteTransferTime = static_cast<float>((1000.0f / baudrate) * 12.0f * 8);
 
   return true;
 }
@@ -963,44 +927,6 @@ double CM740::get_packet_time()
   }
 
   return time;
-}
-
-void CM740::set_update_timeout(int msec)
-{
-  m_UpdateStartTime = get_current_time();
-  m_UpdateWaitTime = msec;
-}
-
-bool CM740::is_update_timeout()
-{
-  if (get_update_time() > m_UpdateWaitTime) {
-    return true;
-  }
-
-  return false;
-}
-
-double CM740::get_update_time()
-{
-  double time;
-
-  time = get_current_time() - m_UpdateStartTime;
-  if (time < 0.0) {
-    m_UpdateStartTime = get_current_time();
-  }
-
-  return time;
-}
-
-void CM740::sleep(double msec)
-{
-  double start_time = get_current_time();
-  double curr_time = start_time;
-
-  do {
-    usleep((start_time + msec) - curr_time);
-    curr_time = get_current_time();
-  } while (curr_time - start_time < msec);
 }
 
 }  // namespace tachimawari_dynamixel
