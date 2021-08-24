@@ -18,11 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#include <tachimawari_dynamixel/cm740.hpp>
-
 #include <string>
 #include <chrono>
 #include <thread>
+
+#include "tachimawari_dynamixel/cm740.hpp"
 
 #include "./errno.h"
 #include "./fcntl.h"
@@ -33,6 +33,8 @@
 #include "linux/serial.h"
 #include "sys/ioctl.h"
 #include "sys/time.h"
+
+using namespace std::chrono_literals;  // NOLINT
 
 namespace tachimawari_dynamixel
 {
@@ -500,7 +502,7 @@ bool CM740::dxl_power_on()
     }
 
     write_word(ID_CM, CM_LED_HEAD_L, make_color(255, 128, 0), 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));  // about 300msec
+    std::this_thread::sleep_for(300ms);  // about 300msec
   } else {
     if (DEBUG_PRINT == true) {
       fprintf(stderr, " Fail to change Dynamixel power!\n");
